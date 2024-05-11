@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"os"
 	"rewind/client/googledrive"
+	"strings"
 
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/option"
@@ -22,10 +24,28 @@ ffmpeg -i input.mp4 \
 */
 
 func main() {
-	ctx := context.Background()
-	// s := "ffmpeg -i videos/H.264/StreetFighter62024.01.20.mp4 -c:v libx265 -preset medium -x265-params crf=32 -c:a copy videos/H.265/output.mp4"
+	//ctx := context.Background()
+	var crf, video, preset string
 
-	// args := strings.Split(s, " ")
+	flag.StringVar(&video, "video", "", "H.264 video file")
+	flag.StringVar(&preset, "preset", "medium", "low;medium;high - preset quality for H.265 video")
+	flag.StringVar(&crf, "crf", "32", "CRF - Constant Rate Factor")
+
+	flag.Parse()
+
+	if video == "" {
+		fmt.Println("no video file provided")
+		flag.Usage()
+		os.Exit(1)
+	}
+
+	videoName := strings.Split(video, ".")[0]
+	output := fmt.Sprintf("%v_output.mp4", videoName)
+
+	s := fmt.Sprintf("ffmpeg -i /videos/H.264/%v -c:v libx265 -preset %v -x265-params crf=%v -c:a copy videos/H.265/%v", video, preset, crf, output)
+
+	args := strings.Split(s, " ")
+	fmt.Println(args[2], args[6], args[8], args[11])
 	// cmd := exec.Command(args[0], args[1:]...)
 
 	// stdout, err := cmd.StderrPipe()
@@ -51,10 +71,12 @@ func main() {
 	// 	fmt.Println("completed!")
 	// }
 
+	fmt.Println("Uploading to Google...")
+
 	// upload to Google Drive
-	if err := upload(ctx); err != nil {
-		log.Fatalf(err.Error())
-	}
+	// if err := upload(ctx); err != nil {
+	// 	log.Fatalf(err.Error())
+	// }
 }
 
 func upload(ctx context.Context) error {
