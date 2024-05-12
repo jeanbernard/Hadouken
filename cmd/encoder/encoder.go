@@ -29,8 +29,12 @@ type encoder struct {
 }
 
 func main() {
-	ctx := context.Background()
 	e := &encoder{}
+	ctx := context.Background()
+	drive, err := googledrive.NewDriveService(ctx)
+	if err != nil {
+		return
+	}
 
 	flag.StringVar(&e.preset, "preset", "medium", "low;medium;high - preset quality for H.265 video")
 	flag.StringVar(&e.CRF, "crf", "32", "CRF - Constant Rate Factor")
@@ -46,7 +50,7 @@ func main() {
 
 	// upload to Google Drive
 	flag.CommandLine.Func("upload", "upload to Google Drive", func(filename string) error {
-		if err := googledrive.Upload(ctx, filename); err != nil {
+		if err := drive.Upload(ctx, filename); err != nil {
 			log.Fatalf(err.Error())
 		}
 		return nil
@@ -64,7 +68,7 @@ func (e encoder) encode(input string) error {
 		os.Exit(1)
 	}
 
-	s := fmt.Sprintf("ffmpeg -i videos/H.264/%v -c:v libx265 -preset %v -x265-params crf=%v -c:a copy videos/H.265/%v",
+	s := fmt.Sprintf("ffmpeg -i videos/H.264/%v -c:v libx265 -preset %v -x265-params crf=%v -c:a copy ../../videos/H.265/%v",
 		input, e.preset, e.CRF, e.output)
 
 	args := strings.Split(s, " ")
