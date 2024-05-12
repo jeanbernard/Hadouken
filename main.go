@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"flag"
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"rewind/client/googledrive"
 	"strings"
 
@@ -23,63 +25,82 @@ ffmpeg -i input.mp4 \
   -vf "scale=1920:-2" -hls_time 6 -hls_list_size 0 -hls_segment_filename "1080p_%03d.ts" 1080p.m3u8
 */
 
-func main() {
-	//ctx := context.Background()
-	var crf, video, preset string
+type encoder struct {
+	preset string
+	output string
+	CRF    string
+}
 
-	flag.StringVar(&video, "video", "", "H.264 video file")
-	flag.StringVar(&preset, "preset", "medium", "low;medium;high - preset quality for H.265 video")
-	flag.StringVar(&crf, "crf", "32", "CRF - Constant Rate Factor")
+func main() {
+	ctx := context.Background()
+	e := &encoder{}
+
+	flag.StringVar(&e.preset, "preset", "medium", "low;medium;high - preset quality for H.265 video")
+	flag.StringVar(&e.CRF, "crf", "32", "CRF - Constant Rate Factor")
+	flag.StringVar(&e.output, "output", "output.mp4", "output for uploading to Drive")
+
+	// encode video
+	flag.CommandLine.Func("encode", "input video to encode", func(input string) error {
+		if err := e.encode(input); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	// upload to Google Drive
+	flag.CommandLine.Func("upload", "upload to Google Drive", func(filename string) error {
+		if err := upload(ctx, filename); err != nil {
+			log.Fatalf(err.Error())
+		}
+		return nil
+	})
 
 	flag.Parse()
+}
 
-	if video == "" {
+func (e encoder) encode(input string) error {
+	input = strings.Trim(input, " ")
+
+	if input == "" {
 		fmt.Println("no video file provided")
 		flag.Usage()
 		os.Exit(1)
 	}
 
-	videoName := strings.Split(video, ".")[0]
-	output := fmt.Sprintf("%v_output.mp4", videoName)
-
-	s := fmt.Sprintf("ffmpeg -i /videos/H.264/%v -c:v libx265 -preset %v -x265-params crf=%v -c:a copy videos/H.265/%v", video, preset, crf, output)
+	s := fmt.Sprintf("ffmpeg -i videos/H.264/%v -c:v libx265 -preset %v -x265-params crf=%v -c:a copy videos/H.265/%v",
+		input, e.preset, e.CRF, e.output)
 
 	args := strings.Split(s, " ")
-	fmt.Println(args[2], args[6], args[8], args[11])
-	// cmd := exec.Command(args[0], args[1:]...)
+	cmd := exec.Command(args[0], args[1:]...)
 
-	// stdout, err := cmd.StderrPipe()
-	// if err != nil {
-	// 	log.Fatalf("Error with pipe")
-	// }
+	stdout, err := cmd.StderrPipe()
+	if err != nil {
+		log.Fatalf("Error with pipe")
+	}
 
-	// err = cmd.Start()
-	// if err != nil {
-	// 	log.Fatalf("Error with start")
-	// }
+	err = cmd.Start()
+	if err != nil {
+		log.Fatalf("Error with start")
+	}
 
-	// scanner := bufio.NewScanner(stdout)
-	// scanner.Split(bufio.ScanLines)
-	// for scanner.Scan() {
-	// 	fmt.Println(scanner.Text())
-	// }
+	scanner := bufio.NewScanner(stdout)
+	scanner.Split(bufio.ScanLines)
+	for scanner.Scan() {
+		fmt.Println(scanner.Text())
+	}
 
-	// err = cmd.Wait()
-	// if err != nil {
-	// 	log.Fatalf("Error with end")
-	// } else {
-	// 	fmt.Println("completed!")
-	// }
-
-	fmt.Println("Uploading to Google...")
-
-	// upload to Google Drive
-	// if err := upload(ctx); err != nil {
-	// 	log.Fatalf(err.Error())
-	// }
+	err = cmd.Wait()
+	if err != nil {
+		log.Fatalf("Error with end")
+	} else {
+		fmt.Println("completed!")
+	}
+	return nil
 }
 
-func upload(ctx context.Context) error {
+func upload(ctx context.Context, filename string) error {
+	fmt.Println("Uploading to Google...")
+
 	file, err := os.ReadFile("client/googledrive/credentials.json")
 	if err != nil {
 		log.Fatalf("Unable to read client secret file: %v", err)
@@ -101,7 +122,7 @@ func upload(ctx context.Context) error {
 	}
 
 	// Open the video file
-	video, err := os.Open("videos/H.265/output.mp4")
+	video, err := os.Open(fmt.Sprintf("videos/H.265/%v", filename))
 	if err != nil {
 		log.Fatalf("Error opening file: %v", err)
 	}
