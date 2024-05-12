@@ -11,10 +11,56 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/drive/v3"
+	"google.golang.org/api/option"
 )
 
+func Upload(ctx context.Context, filename string) error {
+	fmt.Println("Uploading to Google...")
+
+	file, err := os.ReadFile("client/googledrive/credentials.json")
+	if err != nil {
+		log.Fatalf("Unable to read client secret file: %v", err)
+	}
+
+	config, err := getConfig(file)
+	if err != nil {
+		log.Fatalf("Unable to get config: %v", err)
+	}
+
+	client, err := getClient(ctx, config)
+	if err != nil {
+		log.Fatalf("Unable to get client: %v", err)
+	}
+
+	srv, err := drive.NewService(ctx, option.WithHTTPClient(client), option.WithScopes("drive.DriveScope"))
+	if err != nil {
+		log.Fatalf("Unable to retrieve Drive client: %v", err)
+	}
+
+	// Open the video file
+	video, err := os.Open(fmt.Sprintf("videos/H.265/%v", filename))
+	if err != nil {
+		log.Fatalf("Error opening file: %v", err)
+	}
+	defer video.Close()
+
+	f := &drive.File{Name: "SF6Yay"}
+
+	resp, err := srv.Files.Create(f).Media(video).ProgressUpdater(func(now, size int64) {
+		fmt.Printf("%d, %d\r", now, size)
+	}).Do()
+
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	fmt.Printf("new file id: %s\n", resp.Id)
+
+	return nil
+}
+
 // Retrieve a token, saves the token, then returns the generated client.
-func GetClient(ctx context.Context, config *oauth2.Config) (*http.Client, error) {
+func getClient(ctx context.Context, config *oauth2.Config) (*http.Client, error) {
 	// The file token.json stores the user's access and refresh tokens, and is
 	// created automatically when the authorization flow completes for the first
 	// time.
@@ -74,7 +120,7 @@ func saveToken(path string, token *oauth2.Token) error {
 	return nil
 }
 
-func GetConfig(file []byte) (*oauth2.Config, error) {
+func getConfig(file []byte) (*oauth2.Config, error) {
 	config, err := google.ConfigFromJSON(file, drive.DriveFileScope)
 	if err != nil {
 		log.Fatalf("Unable to parse client secret file to config: %v", err)

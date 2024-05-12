@@ -10,9 +10,6 @@ import (
 	"os/exec"
 	"rewind/client/googledrive"
 	"strings"
-
-	"google.golang.org/api/drive/v3"
-	"google.golang.org/api/option"
 )
 
 /*
@@ -49,7 +46,7 @@ func main() {
 
 	// upload to Google Drive
 	flag.CommandLine.Func("upload", "upload to Google Drive", func(filename string) error {
-		if err := upload(ctx, filename); err != nil {
+		if err := googledrive.Upload(ctx, filename); err != nil {
 			log.Fatalf(err.Error())
 		}
 		return nil
@@ -95,50 +92,5 @@ func (e encoder) encode(input string) error {
 	} else {
 		fmt.Println("completed!")
 	}
-	return nil
-}
-
-func upload(ctx context.Context, filename string) error {
-	fmt.Println("Uploading to Google...")
-
-	file, err := os.ReadFile("client/googledrive/credentials.json")
-	if err != nil {
-		log.Fatalf("Unable to read client secret file: %v", err)
-	}
-
-	config, err := googledrive.GetConfig(file)
-	if err != nil {
-		log.Fatalf("Unable to get config: %v", err)
-	}
-
-	client, err := googledrive.GetClient(ctx, config)
-	if err != nil {
-		log.Fatalf("Unable to get client: %v", err)
-	}
-
-	srv, err := drive.NewService(ctx, option.WithHTTPClient(client), option.WithScopes("drive.DriveScope"))
-	if err != nil {
-		log.Fatalf("Unable to retrieve Drive client: %v", err)
-	}
-
-	// Open the video file
-	video, err := os.Open(fmt.Sprintf("videos/H.265/%v", filename))
-	if err != nil {
-		log.Fatalf("Error opening file: %v", err)
-	}
-	defer video.Close()
-
-	f := &drive.File{Name: "SF6Yay"}
-
-	resp, err := srv.Files.Create(f).Media(video).ProgressUpdater(func(now, size int64) {
-		fmt.Printf("%d, %d\r", now, size)
-	}).Do()
-
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
-
-	fmt.Printf("new file id: %s\n", resp.Id)
-
 	return nil
 }
