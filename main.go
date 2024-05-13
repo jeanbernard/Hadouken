@@ -1,30 +1,29 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net/http"
-	"rewind/client/googledrive"
+	"rewind/handlers"
 )
 
 func main() {
-	ctx := context.Background()
-	credPath := "client/googledrive/credentials.json"
+	stream := handlers.NewStream()
 
-	http.HandleFunc("/hello/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("Hello!")
-		drive, err := googledrive.NewDriveService(ctx, credPath)
-		if err != nil {
-			log.Fatal(err)
-			return
-		}
-		if err := drive.Download(); err != nil {
-			log.Fatal(err)
-			return
-		}
+	http.Handle("/", addHeaders(http.FileServer(http.Dir("."))))
+	http.Handle("/download", stream)
 
-	})
-	fmt.Println("Server listening on port 8080...")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	fmt.Printf("Starting server on %v\n", 8080)
+	log.Printf("Serving %s on HTTP port: %v\n", ".", 8080)
+
+	// serve and log errors
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", 8080), nil))
+}
+
+// addHeaders will act as middleware to give us CORS support
+func addHeaders(h http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		h.ServeHTTP(w, r)
+	}
 }

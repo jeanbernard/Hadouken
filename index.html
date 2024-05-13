@@ -1,0 +1,84 @@
+<html>
+  <head>
+    <title>Hadouken!!</title>
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.2/plyr.css" />
+    <script src="//cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://cdn.plyr.io/3.7.2/plyr.js"></script>
+  </head>
+
+  <body>
+
+    <center>
+      <h1>Hadouken!!</h1>
+      <div style="width: 1920px; height: 1080px;">
+        <video id="video" controls autoplay></video>
+      </div>"
+    </center>
+
+    <script>
+      var video = document.getElementById('video');
+      if (Hls.isSupported()) {
+        var hls = new Hls({
+          debug: true,
+        });
+        // hls.loadSource('http://localhost:8080/sf6_0/hls/sf6_0.m3u8');
+        hls.loadSource('http://localhost:8080/output/master.m3u8');
+        const defaultOptions = {};
+
+        hls.on(Hls.Events.MANIFEST_PARSED, function (event, data) {
+          const qualities = hls.levels.map((l) => l.height)
+          defaultOptions.controls =
+          [
+            'play-large', // The large play button in the center
+            'restart', // Restart playback
+            'rewind', // Rewind by the seek time (default 10 seconds)
+            'play', // Play/pause playback
+            'fast-forward', // Fast forward by the seek time (default 10 seconds)
+            'progress', // The progress bar and scrubber for playback and buffering
+            'current-time', // The current time of playback
+            'duration', // The full duration of the media
+            'mute', // Toggle mute
+            'volume', // Volume control
+            'captions', // Toggle captions
+            'settings', // Settings menu
+            'fullscreen', // Toggle fullscreen
+          ];
+          defaultOptions.quality = {
+            width: 640,
+            height: 360,
+            default: qualities[0],
+            options: qualities,
+            forced: true,
+            onChange: (e) => updateQuality(e)
+          }
+          new Plyr(video, defaultOptions);
+        });
+        
+        hls.attachMedia(video);
+        // window.hls = hls;
+
+        hls.on(Hls.Events.MEDIA_ATTACHED, function () {
+          video.muted = true;
+          video.play();
+        });
+
+      }
+      else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // video.src = 'http://localhost:8080/sf6_0/hls/sf6_0.m3u8';
+        hls.loadSource('http://localhost:8080/output/master.m3u8');
+        video.addEventListener('canplay', function () {
+          video.play();
+          video.muted = true;
+        });
+      }
+
+      function updateQuality(newQuality) {
+        window.hls.levels.forEach((level, levelIndex) => {
+          if(level.height == newQuality) {
+            window.hls.currentLevel = levelIndex
+          }
+        })
+      }
+    </script>
+  </body>
+</html>

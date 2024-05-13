@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -80,8 +81,28 @@ func (g GoogleDrive) Download() error {
 		return err
 	}
 
-	for _, file := range files.Files {
-		fmt.Println(file.Id, file.CreatedTime, file.ModifiedTime, file.Name)
+	totalFiles := len(files.Files)
+	if totalFiles != 0 {
+		file := files.Files[0]
+		resp, err := g.service.Files.Get(file.Id).Download()
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+
+		out, err := os.Create(fmt.Sprintf("videos/downloaded/%v.mp4", file.Name))
+		if err != nil {
+			return err
+		}
+		defer out.Close()
+
+		if _, err := io.Copy(out, resp.Body); err != nil {
+			log.Fatalf("Error copying file: %v", err)
+		}
+
+		fmt.Println("File downloaded")
+	} else {
+		fmt.Println("File not found")
 	}
 
 	return nil

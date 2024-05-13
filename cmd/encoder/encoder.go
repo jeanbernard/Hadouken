@@ -31,7 +31,9 @@ type encoder struct {
 func main() {
 	e := &encoder{}
 	ctx := context.Background()
-	drive, err := googledrive.NewDriveService(ctx)
+	credPath := "client/googledrive/credentials.json"
+
+	drive, err := googledrive.NewDriveService(ctx, credPath)
 	if err != nil {
 		return
 	}
@@ -68,7 +70,7 @@ func (e encoder) encode(input string) error {
 		os.Exit(1)
 	}
 
-	s := fmt.Sprintf("ffmpeg -i videos/H.264/%v -c:v libx265 -preset %v -x265-params crf=%v -c:a copy ../../videos/H.265/%v",
+	s := fmt.Sprintf("ffmpeg -i videos/H.264/%v -c:v libx265 -preset %v -x265-params crf=%v -c:a copy videos/H.265/%v",
 		input, e.preset, e.CRF, e.output)
 
 	args := strings.Split(s, " ")
