@@ -1,17 +1,25 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"hadouken/client/googledrive"
 	"hadouken/handlers"
 	"log"
 	"net/http"
 )
 
 func main() {
-	stream := handlers.NewStream()
+	ctx := context.Background()
+
+	googleDrive, err := googledrive.NewDriveService(ctx, "client/googledrive/credentials.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+	streamHandler := handlers.NewStream(googleDrive)
 
 	http.Handle("/", addHeaders(http.FileServer(http.Dir("."))))
-	http.Handle("/download", stream)
+	http.Handle("/download", streamHandler)
 
 	log.Printf("Starting server on %v\n", 8080)
 

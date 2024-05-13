@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"hadouken/client/googledrive"
 	"hadouken/cmd/hls"
 	"log"
@@ -9,28 +8,22 @@ import (
 )
 
 type Stream struct {
+	GoogleDrive *googledrive.GoogleDrive
 }
 
-func NewStream() *Stream {
-	return &Stream{}
+func NewStream(srv *googledrive.GoogleDrive) *Stream {
+	return &Stream{srv}
 }
 
 func (s *Stream) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx := context.Background()
 	hls := hls.NewHLS()
-	credPath := "client/googledrive/credentials.json"
 
-	drive, err := googledrive.NewDriveService(ctx, credPath)
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-	if err := drive.Download(); err != nil {
+	if err := s.GoogleDrive.Download(); err != nil {
 		log.Fatal(err)
 		return
 	}
 
-	if err = hls.Create(); err != nil {
+	if err := hls.Create(); err != nil {
 		log.Fatal(err)
 		return
 	}
