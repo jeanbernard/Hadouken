@@ -1,3 +1,11 @@
-/videos
+/videos/H.264/*
+!videos/H.264/.gitkeep
+
+/videos/downloaded/*
+!videos/downloaded/.gitkeep
+
+/output/*
+!output/.gitkeep
+
 /client/googledrive/*.json
 *.json

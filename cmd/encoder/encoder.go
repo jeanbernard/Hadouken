@@ -5,22 +5,12 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"hadouken/client/googledrive"
 	"log"
 	"os"
 	"os/exec"
-	"rewind/client/googledrive"
 	"strings"
 )
-
-/*
-ffmpeg -i input.mp4 -c:v libx265 -preset medium -x265-params crf=23 -c:a copy output.mp4
-
-ffmpeg -i input.mp4 \
-  -c:v libx265 -crf 32 -preset medium -c:a aac -b:a 128k \
-  -vf "scale=640:-2" -hls_time 6 -hls_list_size 0 -hls_segment_filename "360p_%03d.ts" 360p.m3u8 \
-  -vf "scale=1280:-2" -hls_time 6 -hls_list_size 0 -hls_segment_filename "720p_%03d.ts" 720p.m3u8 \
-  -vf "scale=1920:-2" -hls_time 6 -hls_list_size 0 -hls_segment_filename "1080p_%03d.ts" 1080p.m3u8
-*/
 
 type encoder struct {
 	preset string

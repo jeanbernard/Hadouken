@@ -14,10 +14,12 @@ func NewHLS() *HLS {
 }
 
 func (h HLS) Create() error {
-	cmd, err := exec.Command("/bin/sh", "hls.sh").Output()
+	fmt.Println("Creating HLS files...")
+	cmd, err := exec.Command("/bin/sh", "cmd/hls/hls.sh").Output()
 	if err != nil {
-		log.Fatalf("Error")
+		log.Fatalf("Error %v", err)
 	}
+
 	output := string(cmd)
 	fmt.Println(output)
 

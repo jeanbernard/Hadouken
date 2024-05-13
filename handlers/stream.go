@@ -2,10 +2,10 @@ package handlers
 
 import (
 	"context"
+	"hadouken/client/googledrive"
+	"hadouken/cmd/hls"
 	"log"
 	"net/http"
-	"rewind/client/googledrive"
-	"rewind/cmd/hls"
 )
 
 type Stream struct {
@@ -17,8 +17,8 @@ func NewStream() *Stream {
 
 func (s *Stream) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
-	credPath := "client/googledrive/credentials.json"
 	hls := hls.NewHLS()
+	credPath := "client/googledrive/credentials.json"
 
 	drive, err := googledrive.NewDriveService(ctx, credPath)
 	if err != nil {
@@ -34,15 +34,6 @@ func (s *Stream) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 		return
 	}
+
+	http.ServeFile(w, r, "index.html")
 }
-
-// func createHLS() error {
-// 	cmd, err := exec.Command("/bin/sh", "hls.sh").Output()
-// 	if err != nil {
-// 		log.Fatalf("Error")
-// 	}
-// 	output := string(cmd)
-// 	fmt.Println(output)
-
-// 	return nil
-// }

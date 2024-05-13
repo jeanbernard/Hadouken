@@ -1,4 +1,4 @@
-module rewind
+module hadouken
 
 go 1.22.3
 
