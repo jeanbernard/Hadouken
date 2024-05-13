@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -18,8 +19,8 @@ type GoogleDrive struct {
 	service *drive.Service
 }
 
-func NewDriveService(ctx context.Context) (*GoogleDrive, error) {
-	file, err := os.ReadFile("../../client/googledrive/credentials.json")
+func NewDriveService(ctx context.Context, credPath string) (*GoogleDrive, error) {
+	file, err := os.ReadFile(credPath)
 	if err != nil {
 		log.Fatalf("Unable to read client secret file: %v", err)
 	}
@@ -46,13 +47,16 @@ func (g GoogleDrive) Upload(ctx context.Context, filename string) error {
 	fmt.Println("Uploading to Google...")
 
 	// Open the video file
-	video, err := os.Open(fmt.Sprintf("../../videos/H.265/%v", filename))
+	video, err := os.Open(fmt.Sprintf("videos/H.265/%v", filename))
 	if err != nil {
 		log.Fatalf("Error opening file: %v", err)
 	}
 	defer video.Close()
 
-	f := &drive.File{Name: "SF6Yay"}
+	now := time.Now().UTC()
+	createdAt := now.Format("2006-01-02T15:04:05Z")
+
+	f := &drive.File{Name: "SF6Yay", CreatedTime: createdAt}
 
 	resp, err := g.service.Files.Create(f).Media(video).ProgressUpdater(func(now, size int64) {
 		fmt.Printf("%d, %d\r", now, size)
@@ -68,6 +72,17 @@ func (g GoogleDrive) Upload(ctx context.Context, filename string) error {
 }
 
 func (g GoogleDrive) Download() error {
+	fmt.Println("Downloading from Google...")
+
+	query := fmt.Sprintf("name='%s' and trashed=false", "SF6Yay")
+	files, err := g.service.Files.List().Fields("files(createdTime, name, id)").Q(query).Do()
+	if err != nil {
+		return err
+	}
+
+	for _, file := range files.Files {
+		fmt.Println(file.Id, file.CreatedTime, file.ModifiedTime, file.Name)
+	}
 
 	return nil
 }
