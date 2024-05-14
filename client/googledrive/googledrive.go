@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -65,8 +66,11 @@ func (g GoogleDrive) Upload(ctx context.Context, filename string) error {
 			continue
 		}
 
+		filePath := fmt.Sprintf("output/%v", file.Name())
+		baseName := filepath.Base(filePath)
+
 		// Open the video file
-		video, err := os.Open(fmt.Sprintf("output/%v", file.Name()))
+		video, err := os.Open(filePath)
 		if err != nil {
 			log.Fatalf("Error opening file: %v", err)
 		}
@@ -76,7 +80,7 @@ func (g GoogleDrive) Upload(ctx context.Context, filename string) error {
 		createdAt := now.Format("2006-01-02T15:04:05Z")
 
 		f := &drive.File{
-			Name:        video.Name(),
+			Name:        baseName,
 			Parents:     []string{folderID},
 			CreatedTime: createdAt,
 			MimeType:    "video/MP2T",
@@ -90,7 +94,7 @@ func (g GoogleDrive) Upload(ctx context.Context, filename string) error {
 			log.Fatalf(err.Error())
 		}
 
-		fmt.Printf("new file id: %s\n", resp.Id)
+		fmt.Printf("new file id: %s, name: %v\n", resp.Id, f.Name)
 	}
 	return nil
 }
