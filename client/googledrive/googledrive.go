@@ -86,12 +86,10 @@ func (g GoogleDrive) Upload(ctx context.Context, filename string) error {
 			MimeType:    "video/MP2T",
 		}
 
-		resp, err := g.service.Files.Create(f).Media(video).ProgressUpdater(func(now, size int64) {
-			fmt.Printf("%d, %d\r", now, size)
-		}).Do()
-
+		resp, err := g.service.Files.Create(f).Media(video).Do()
 		if err != nil {
 			log.Fatalf(err.Error())
+			return err
 		}
 
 		fmt.Printf("new file id: %s, name: %v\n", resp.Id, f.Name)
