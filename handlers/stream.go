@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"hadouken/client/googledrive"
-	"hadouken/cmd/hls"
 	"log"
 	"net/http"
 )
@@ -16,17 +15,17 @@ func NewStream(srv *googledrive.GoogleDrive) *Stream {
 }
 
 func (s *Stream) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	hls := hls.NewHLS()
+	//hls := hls.NewHLS()
 
 	if err := s.GoogleDrive.Download(); err != nil {
 		log.Fatal(err)
 		return
 	}
 
-	if err := hls.Create(); err != nil {
-		log.Fatal(err)
-		return
-	}
+	// if err := hls.Create(); err != nil {
+	// 	log.Fatal(err)
+	// 	return
+	// }
 
 	http.ServeFile(w, r, "index.html")
 }

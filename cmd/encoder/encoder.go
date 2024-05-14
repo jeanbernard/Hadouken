@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"hadouken/client/googledrive"
+	"hadouken/cmd/hls"
 	"log"
 	"os"
 	"os/exec"
@@ -16,10 +17,12 @@ type encoder struct {
 	preset string
 	output string
 	CRF    string
+	codec  string
 }
 
 func main() {
 	e := &encoder{}
+	hls := hls.NewHLS()
 	ctx := context.Background()
 	credPath := "client/googledrive/credentials.json"
 
@@ -31,10 +34,19 @@ func main() {
 	flag.StringVar(&e.preset, "preset", "medium", "low;medium;high - preset quality for H.265 video")
 	flag.StringVar(&e.CRF, "crf", "32", "CRF - Constant Rate Factor")
 	flag.StringVar(&e.output, "output", "output.mp4", "output for uploading to Drive")
+	flag.StringVar(&e.codec, "codec", "libx265", "codec for encoding the video")
 
 	// encode video
 	flag.CommandLine.Func("encode", "input video to encode", func(input string) error {
 		if err := e.encode(input); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	// create HLS segments
+	flag.CommandLine.Func("hls", "input video to create HLS segments", func(input string) error {
+		if err := hls.Create(input); err != nil {
 			return err
 		}
 		return nil
@@ -52,13 +64,7 @@ func main() {
 }
 
 func (e encoder) encode(input string) error {
-	input = strings.Trim(input, " ")
-
-	if input == "" {
-		fmt.Println("no video file provided")
-		flag.Usage()
-		os.Exit(1)
-	}
+	checkEmptyInput(input)
 
 	s := fmt.Sprintf("ffmpeg -i videos/H.264/%v -c:v libx265 -preset %v -x265-params crf=%v -c:a copy videos/H.265/%v",
 		input, e.preset, e.CRF, e.output)
@@ -89,4 +95,14 @@ func (e encoder) encode(input string) error {
 		fmt.Println("completed!")
 	}
 	return nil
+}
+
+func checkEmptyInput(input string) {
+	input = strings.Trim(input, " ")
+
+	if input == "" {
+		fmt.Println("no video file provided")
+		flag.Usage()
+		os.Exit(1)
+	}
 }

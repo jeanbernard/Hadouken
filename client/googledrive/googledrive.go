@@ -16,6 +16,8 @@ import (
 	"google.golang.org/api/option"
 )
 
+const folderID = "1elrmUuZGIPraXJ3jodhlMLKVSYM7tIKF"
+
 type GoogleDrive struct {
 	service *drive.Service
 }
@@ -46,29 +48,50 @@ func NewDriveService(ctx context.Context, credPath string) (*GoogleDrive, error)
 
 func (g GoogleDrive) Upload(ctx context.Context, filename string) error {
 	fmt.Println("Uploading to Google...")
+	dontUpload := map[string]struct{}{".DS_Store": struct{}{}, ".gitkeep": struct{}{}}
 
-	// Open the video file
-	video, err := os.Open(fmt.Sprintf("videos/H.265/%v", filename))
+	// Open the output directory
+	files, err := os.ReadDir("output")
 	if err != nil {
-		log.Fatalf("Error opening file: %v", err)
-	}
-	defer video.Close()
-
-	now := time.Now().UTC()
-	createdAt := now.Format("2006-01-02T15:04:05Z")
-
-	f := &drive.File{Name: "SF6Yay", CreatedTime: createdAt}
-
-	resp, err := g.service.Files.Create(f).Media(video).ProgressUpdater(func(now, size int64) {
-		fmt.Printf("%d, %d\r", now, size)
-	}).Do()
-
-	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
+		return err
 	}
 
-	fmt.Printf("new file id: %s\n", resp.Id)
+	// Iterate through each file
+	for _, file := range files {
 
+		// Don't upload these files
+		if _, ok := dontUpload[file.Name()]; ok {
+			continue
+		}
+
+		// Open the video file
+		video, err := os.Open(fmt.Sprintf("output/%v", file.Name()))
+		if err != nil {
+			log.Fatalf("Error opening file: %v", err)
+		}
+		defer video.Close()
+
+		now := time.Now().UTC()
+		createdAt := now.Format("2006-01-02T15:04:05Z")
+
+		f := &drive.File{
+			Name:        video.Name(),
+			Parents:     []string{folderID},
+			CreatedTime: createdAt,
+			MimeType:    "video/MP2T",
+		}
+
+		resp, err := g.service.Files.Create(f).Media(video).ProgressUpdater(func(now, size int64) {
+			fmt.Printf("%d, %d\r", now, size)
+		}).Do()
+
+		if err != nil {
+			log.Fatalf(err.Error())
+		}
+
+		fmt.Printf("new file id: %s\n", resp.Id)
+	}
 	return nil
 }
 
