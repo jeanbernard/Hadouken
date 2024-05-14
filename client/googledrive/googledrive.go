@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -49,7 +51,7 @@ func NewDriveService(ctx context.Context, credPath string) (*GoogleDrive, error)
 
 func (g GoogleDrive) Upload(ctx context.Context, filename string) error {
 	fmt.Println("Uploading to Google...")
-	dontUpload := map[string]struct{}{".DS_Store": struct{}{}, ".gitkeep": struct{}{}}
+	dontUpload := map[string]struct{}{".DS_Store": {}, ".gitkeep": {}}
 
 	// Open the output directory
 	files, err := os.ReadDir("output")
@@ -100,34 +102,67 @@ func (g GoogleDrive) Upload(ctx context.Context, filename string) error {
 func (g GoogleDrive) Download() error {
 	fmt.Println("Downloading from Google...")
 
-	query := fmt.Sprintf("name='%s' and trashed=false", "SF6Yay")
-	files, err := g.service.Files.List().Fields("files(createdTime, name, id)").Q(query).Do()
+	query := fmt.Sprintf("'%s' in parents and trashed=false", folderID)
+	files, err := g.service.Files.List().Fields("files(createdTime, name, id)").Q(query).OrderBy("name").Do()
 	if err != nil {
 		return err
 	}
 
-	totalFiles := len(files.Files)
-	if totalFiles != 0 {
-		file := files.Files[0]
-		resp, err := g.service.Files.Get(file.Id).Download()
-		if err != nil {
+	masters := make(map[string]string)
+	segments := make(map[string]string)
+
+	for _, file := range files.Files {
+		if strings.Contains(file.Name, ".m3u8") {
+			masters[file.Name] = file.Id
+		} else {
+			segments[file.Name] = file.Id
+		}
+	}
+
+	// get masters 1st
+	for masterName, masterId := range masters {
+		if err := g.downloadFiles(masterId, masterName); err != nil {
 			return err
 		}
-		defer resp.Body.Close()
+	}
 
-		out, err := os.Create(fmt.Sprintf("videos/downloaded/%v.mp4", file.Name))
-		if err != nil {
+	// extract keys for sorting
+	keys := make([]string, 0, len(segments))
+	for key := range segments {
+		keys = append(keys, key)
+	}
+
+	// sort keys
+	sort.Strings(keys)
+
+	// get sorted segments
+	for _, k := range keys {
+		if err := g.downloadFiles(segments[k], k); err != nil {
 			return err
 		}
-		defer out.Close()
+	}
 
-		if _, err := io.Copy(out, resp.Body); err != nil {
-			log.Fatalf("Error copying file: %v", err)
-		}
+	return nil
+}
 
-		fmt.Println("File downloaded")
-	} else {
-		fmt.Println("File not found")
+func (g GoogleDrive) downloadFiles(fileId, fileName string) error {
+	fmt.Printf("downloading file id: %v, file name: %v\n", fileId, fileName)
+
+	resp, err := g.service.Files.Get(fileId).Download()
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	out, err := os.Create(fmt.Sprintf("videos/downloaded/%v", fileName))
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	if _, err := io.Copy(out, resp.Body); err != nil {
+		log.Fatalf("Error copying file: %v", err)
+		return err
 	}
 
 	return nil
